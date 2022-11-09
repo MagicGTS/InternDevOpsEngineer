@@ -16,12 +16,15 @@ Because I'm prefer to use podman as compatible replacement of docker, I installe
 - sudo firewall-cmd --runtime-to-permanent
 - docker ps
 
-`CONTAINER ID  IMAGE                           COMMAND               CREATED        STATUS            PORTS                 NAMES
-a49e049b2203  docker.io/library/nginx:latest  nginx -g daemon o...  4 seconds ago  Up 4 seconds ago  0.0.0.0:8443->80/tcp  nginx-1`
+```
+CONTAINER ID  IMAGE                           COMMAND               CREATED        STATUS            PORTS                 NAMES
+a49e049b2203  docker.io/library/nginx:latest  nginx -g daemon o...  4 seconds ago  Up 4 seconds ago  0.0.0.0:8443->80/tcp  nginx-1
+```
 
 - curl 127.0.0.1:8443
 
-`<!DOCTYPE html>
+```
+<!DOCTYPE html>
 <html>
 <head>
 <title>Welcome to nginx!</title>
@@ -43,7 +46,8 @@ Commercial support is available at
 
 <p><em>Thank you for using nginx.</em></p>
 </body>
-</html>`
+</html>
+```
 
 # Doing the second sub task
 - mkdir ./mysql
@@ -51,7 +55,8 @@ Commercial support is available at
 - docker run --name mysql -d -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mysql-root -v ./mysql.pwd:/run/secrets/mysql-root:ro -v ./mysql:/var/lib/mysql mariadb
 - docker ps
 
-`CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS             PORTS                 NAMES
+```
+CONTAINER ID  IMAGE                             COMMAND               CREATED         STATUS             PORTS                 NAMES
 a49e049b2203  docker.io/library/nginx:latest    nginx -g daemon o...  22 minutes ago  Up 22 minutes ago  0.0.0.0:8443->80/tcp  nginx-1
 90c78a368fd2  docker.io/library/mariadb:latest  mariadbd              7 seconds ago   Up 8 seconds ago                         mysql`
 
@@ -64,12 +69,15 @@ Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
 
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-MariaDB [(none)]>`
+MariaDB [(none)]>
+```
 
 - docker cp ./dbcreate.sql mysql:/tmp/
 - docker exec -it mysql mysql -u root -p
 - source /tmp/dbcreate.sql
-`Welcome to the MariaDB monitor.  Commands end with ; or \g.
+
+```
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MariaDB connection id is 6
 Server version: 10.9.3-MariaDB-1:10.9.3+maria~ubu2204 mariadb.org binary distribution
 
@@ -112,4 +120,4 @@ MariaDB [mysql]> select * from user;
 | 127.0.0.1 | idoe        | *6F06DF9B0E450291E7BEDDAC1123B0F09F94452B | N           | N           | N           | N           | N           | N         | N           | N             | N            | N         | N          | N               | N          | N          | N            | N          | N                     | N                | N            | N               | N                | N                | N              | N                   | N                  | N                | N          | N            | N                      | N                   |          |            |             |              |             0 |           0 |               0 |                    0 | mysql_native_password | *6F06DF9B0E450291E7BEDDAC1123B0F09F94452B | N                | N       |              |           0.000000 |
 +-----------+-------------+-------------------------------------------+-------------+-------------+-------------+-------------+-------------+-----------+-------------+---------------+--------------+-----------+------------+-----------------+------------+------------+--------------+------------+-----------------------+------------------+--------------+-----------------+------------------+------------------+----------------+---------------------+--------------------+------------------+------------+--------------+------------------------+---------------------+----------+------------+-------------+--------------+---------------+-------------+-----------------+----------------------+-----------------------+-------------------------------------------+------------------+---------+--------------+--------------------+
 4 rows in set (0.002 sec)
-`
+```
