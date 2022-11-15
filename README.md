@@ -1,3 +1,210 @@
 # InternDevOpsEngineer
 
 This is repository for studying on Intern DevOps Engineer course in Itransition.
+
+# Task 1.2 -Kubernetes
+Because I`m already had my own infrastructure, I decided describe my experience in manual deployment 3 master nodes\ 3 work nodes cluster.
+
+## Basic steps:
+- useradd -g users -G wheel -m <USER> && passwd <USER>
+- Preload some useful modules
+
+```
+cat <<EOF | sudo tee /etc/modules-load.d/kube.conf
+br_netfilter
+overlay
+EOF
+```
+
+- Tune system vars
+
+```
+cat <<EOF | sudo tee /etc/sysctl.d/kube.conf
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+sysctl -w net.ipv4.ip_forward = 1
+EOF
+```
+
+- Allow passwordless sudo for our user
+```
+cat <<EOF | sudo tee /etc/sudoers.d/<USER>
+<USER> ALL=(ALL) NOPASSWD: ALL
+EOF
+```
+- Disabling swap (mandatory), selinux (current k8s has numerius problem with it) and cgroup v1 (also has problem)
+- sudo -- bash -c "swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab"
+- sudo sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
+- sudo grubby --update-kernel ALL --args enforcing=0
+- sudo grubby --update-kernel ALL --args systemd.unified_cgroup_hierarchy=0
+- reboot
+
+## Downloading k8s packages
+- export OS=CentOS_8_Stream
+- export VERSION=1.24
+- sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
+- sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo
+
+```
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+```
+- Preparation to use calico
+```
+cat <<EOF | sudo tee /etc/NetworkManager/conf.d/calico.conf
+[keyfile]
+unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:wireguard.cali
+EOF
+```
+- sudo systemctl restart NetworkManager
+
+Because I'm don't like to use Docker, on next step we should install Docker compatible replacement - Podman (!!! this instruction compatible with Podman version prior 4)
+
+- sudo dnf -y install cri-o containernetworking-plugins kubelet kubeadm kubectl --disableexcludes=kubernetes
+- sudo mkdir -p /etc/systemd/system/kubelet.service.wants/
+- sudo ln -s /usr/lib/systemd/system/crio.service /etc/systemd/system/kubelet.service.wants/crio.service
+- sudo systemctl daemon-reload
+
+```
+cat <<EOF | tee ./kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta3
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: <token>
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: <some ip>
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///var/run/crio/crio.sock
+  imagePullPolicy: IfNotPresent
+  name: <host name>
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiServer:
+  timeoutForControlPlane: 4m0s
+apiVersion: kubeadm.k8s.io/v1beta3
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controlPlaneEndpoint: <some ip\dns name>:6443
+controllerManager: {}
+dns: {}
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: k8s.gcr.io
+kind: ClusterConfiguration
+kubernetesVersion: v1.24.3
+networking:
+  dnsDomain: <dns cluster name>
+  podSubnet: 10.85.0.0/16
+  serviceSubnet: 10.96.0.0/12
+scheduler: {}
+EOF
+```
+```
+cat <<EOF | sudo tee /etc/sysconfig/kubelet
+KUBELET_EXTRA_ARGS="--container-log-max-size=100M"
+EOF
+```
+- sudo -- bash -c "sed -i 's/\#?*\s*conmon_cgroup\s*=.*/conmon_cgroup = \"kubepods.slice\"/g' /etc/crio/crio.conf"
+- sudo systemctl disable --now rsyslog
+- sudo logrotate --force /etc/logrotate.conf
+- sudo find /var/log/ -type f -regextype sed -regex '.*[0-9]\{8,8\}.*' -exec rm -f {} +
+- sudo systemctl enable --now crio
+- sudo systemctl enable kubelet.service
+- sudo firewall-cmd --zone=public --add-service=kube-control-plane --permanent
+- sudo firewall-cmd --zone=public --add-service=kubelet-worker --permanent
+- sudo firewall-cmd --zone=public --add-port=4789/udp --permanent
+- sudo firewall-cmd --zone=public --add-port=5473/tcp --permanent
+- sudo firewall-cmd --zone=public --add-port=179/tcp --permanent
+- sudo firewall-cmd --permanent --zone=public --add-source=10.85.0.0/16
+- sudo firewall-cmd --permanent --new-zone=k8s-cluster
+- sudo firewall-cmd --permanent --zone=k8s-cluster --set-target=ACCEPT
+- sudo firewall-cmd --permanent --zone=k8s-cluster --add-interface=vxlan.calico
+- sudo firewall-cmd --reload
+- sudo firewall-cmd --zone=public --add-service=http --permanent
+- sudo firewall-cmd --zone=public --add-service=https --permanent
+- sudo firewall-cmd --reload
+- sudo firewall-cmd --reload
+- for i in $(systemctl list-unit-files --no-legend --no-pager -l | grep --color=never -o .*.slice | grep kubepod); do systemctl stop $i; done
+
+Next step slightly tricky, we start first node installation and while preparation process we need to stop kubepods-burstable.slice immediately after it start:
+- sudo kubeadm init --config kubeadm-config.yaml
+- watch systemctl status kubepods-burstable.slice
+Command to stopping process (https://github.com/kubernetes/kubernetes/issues/43856):
+- sudo systemctl stop kubepods-burstable.slice
+Preparing admin keys:
+```
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl get pods -A
+```
+For pods workload scheduling, we could make it by zones and region labels:
+```
+kubectl label node kube-master-0.<domain> topology.kubernetes.io/region=msk
+kubectl label node kube-master-0.<doamin> topology.kubernetes.io/zone=msk.psh
+etc
+```
+## Installing calico
+
+- kubectl apply -f https://docs.projectcalico.org/v3.15/manifests/calico.yaml
+- kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.6.0/aio/deploy/recommended.yaml
+
+# Creating dashboard service account and role
+
+```
+cat <<EOF | tee ./admin-user.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+```
+- kubectl apply -f admin-user.yaml
+
+To access dashboard we should use token and start proxy:
+- kubectl -n kubernetes-dashboard create token admin-user
+- kubectl proxy
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+To add additional node to cluster we should use command like it:
+```
+kubeadm join kube-master-cp.<domain>:6443 --token <token> \
+        --discovery-token-ca-cert-hash sha256:<token> \
+        --control-plane
+```
+And pack auto generated certs by command like this and transfer it to target node:
+tar -cvf pki.tar /etc/kubernetes/pki/ca.key /etc/kubernetes/pki/etcd/ca.crt /etc/kubernetes/pki/etcd/ca.key /etc/kubernetes/pki/front-proxy-ca.crt /etc/kubernetes/pki/front-proxy-ca.key /etc/kubernetes/pki/sa.key /etc/kubernetes/pki/sa.pub
+
+## Ingress nginx
