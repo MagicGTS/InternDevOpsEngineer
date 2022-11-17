@@ -208,3 +208,39 @@ And pack auto generated certs by command like this and transfer it to target nod
 tar -cvf pki.tar /etc/kubernetes/pki/ca.key /etc/kubernetes/pki/etcd/ca.crt /etc/kubernetes/pki/etcd/ca.key /etc/kubernetes/pki/front-proxy-ca.crt /etc/kubernetes/pki/front-proxy-ca.key /etc/kubernetes/pki/sa.key /etc/kubernetes/pki/sa.pub
 
 ## Ingress nginx
+
+As nginx ingress controller we have two major distribution, the first one is https://kubernetes.github.io/ingress-nginx/ and second one is https://docs.nginx.com/nginx-ingress-controller/ known also as nginxinc/kubernetes-ingress. I`m prefered nginxinc/kubernetes-ingress.
+
+Because I also deploy on premise k8s cluster and haven't load balancer outside cluser, except dns round robin, it is more convinient deploy ingress controller throught kubernetes manifests file as daemon-set insted of helm chart.
+
+- git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v2.4.1
+- cd kubernetes-ingress/deployments
+- kubectl apply -f common/ns-and-sa.yaml
+- kubectl apply -f rbac/rbac.yaml
+Major notice, this secret contain pre generated certificates, for security reason it is good to generate yours own.
+- kubectl apply -f common/default-server-secret.yaml
+- kubectl apply -f common/nginx-config.yaml
+- kubectl apply -f common/ingress-class.yaml
+- ubectl apply -f common/crds/k8s.nginx.org_virtualservers.yaml
+- kubectl apply -f common/crds/k8s.nginx.org_virtualserverroutes.yaml
+- kubectl apply -f common/crds/k8s.nginx.org_transportservers.yaml
+- kubectl apply -f common/crds/k8s.nginx.org_policies.yaml
+- kubectl apply -f kubernetes-ingress/deployments/daemon-set/nginx-ingress.yaml
+
+This is quite straightforward, in addition we must allow incoming traffic to standards web ports 80 and 443 on every working nodes.
+
+## ZFS as volume subsystem
+
+Helpfuly that Kubernetes support a bunch of storage solutions. one of them is openbs zfs
+- kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+- kubectl apply -f https://openebs.github.io/charts/zfs-operator.yaml
+
+Inside StorageClass folder you can find some StorageClass definition and persistent volume claim for postgres.
+
+## Install Cert-Manager
+To have global validity ssl certificate we can by it from appropriate pki provider or use Let's Encrypt with Cert-Manager. Because it is not quite easy to do it by k8s manifest, just do it by helm:
+- helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.9.1 --set installCRDs=true
+## Zabbix inside kubernetes
+
+We can deploy zabbix by single simple action, but it isn't simple inside:
+- kubectl apply -f zabbix.yaml

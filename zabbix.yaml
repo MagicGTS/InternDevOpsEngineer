@@ -1,0 +1,483 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: zabbix
+  labels:
+    kubernetes.io/metadata.name: zabbix
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zabbix-postgres-secret
+  namespace: zabbix
+type: Opaque
+data:
+  db_name: emFiYml4
+  db_password: YEFLejlTY1kjPXZeZEdQN1phViE=
+  db_username: emFiYml4
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgre-pgdata
+  namespace: zabbix
+  labels:
+    app: zabbix
+spec:
+  storageClassName: "openebs-wfc-zfspv-postgres-retain"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgre-pglog
+  namespace: zabbix
+  labels:
+    app: zabbix
+spec:
+  storageClassName: "openebs-wfc-zfspv-postgres-retain"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: zabbix
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: timescale/timescaledb:2.7.2-pg14
+        ports:
+         - protocol: TCP
+           containerPort: 5432
+        volumeMounts:
+          - name: secret
+            mountPath: /secret
+            readOnly: true
+          - name: postgre-pgdata
+            mountPath: /mnt/postgresql
+          - name: postgre-pglog
+            mountPath: /mnt/postgresql/pgdata/pg_wal
+        env:
+          - name: POSTGRES_PASSWORD_FILE
+            value: /secret/password
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_username
+                optional: false
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_name
+                optional: false
+          - name: PGDATA
+            value: /mnt/postgresql/pgdata
+          - name: TS_TUNE_MEMORY
+            value: 2GB
+          - name: POSTGRES_INITDB_ARGS
+            value: "--encoding=UTF-8"
+          - name: TS_TUNE_MAX_CONNS
+            value: "100"
+      initContainers:
+      - name: volume-dirs-init-cntr
+        image: busybox:1.35
+        volumeMounts:
+          - name: postgre-pgdata
+            mountPath: /mnt/postgresql
+        command:
+        - "/bin/mkdir"
+        args:
+        - "-p"
+        - "/mnt/postgresql/pgdata"
+      volumes:
+        - name: secret
+          secret:
+            secretName: zabbix-postgres-secret
+            items:
+              - key: db_password
+                path: password
+        - name: postgre-pgdata
+          persistentVolumeClaim:
+            claimName: postgre-pgdata
+        - name: postgre-pglog
+          persistentVolumeClaim:
+            claimName: postgre-pglog
+      nodeSelector:
+        'kubernetes.io/hostname': 'kube-node-1.aristo.ru'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: zabbix
+  labels:
+    app: postgresql
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+  selector:
+    app: postgresql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zabbix-data
+  namespace: zabbix
+  labels:
+    app: zabbix
+spec:
+  storageClassName: "openebs-wfc-zfspv-retain"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix
+  namespace: zabbix
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: zabbix
+  template:
+    metadata:
+      labels:
+        app: zabbix
+    spec:
+      containers:
+      - name: zabbix-server
+        image: zabbix/zabbix-server-pgsql:6.2-alpine-latest
+        ports:
+         - protocol: TCP
+           containerPort: 10051
+        securityContext:
+          capabilities:
+            add:
+            - NET_RAW
+        volumeMounts:
+          - name: secret
+            mountPath: /secret
+            readOnly: true
+          - name: zabbix-data
+            mountPath: /var/lib/zabbix
+        env:
+          - name: POSTGRES_PASSWORD_FILE
+            value: /secret/password
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_username
+                optional: false
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_name
+                optional: false
+          - name: DB_SERVER_HOST
+            value: "postgresql"
+          - name: ZBX_DEBUGLEVEL
+            value: "2"
+          - name: ZBX_STARTPINGERS
+            value: "5"
+          - name: STARTPOLLERS
+            value: "10"
+          - name: ZBX_STARTPOLLERSUNREACHABLE
+            value: "10"
+          - name: ZBX_CACHESIZE
+            value: 128M
+          - name: ZBX_VALUECACHESIZE
+            value: 768M
+#          - name: TLSCAFile
+#            value: ca.crt
+#          - name: ZBX_TLSCRLFILE
+#            value: revoked.crl
+#          - name: ZBX_TLSCERTFILE
+#            value: zabbix.crt
+#          - name: ZBX_TLSKEYFILE
+#            value: zabbix.key
+      - name: zabbix-web-nginx
+        image: zabbix/zabbix-web-nginx-pgsql:6.2-alpine-latest
+        ports:
+         - protocol: TCP
+           containerPort: 8080
+         - protocol: TCP
+           containerPort: 8443
+        volumeMounts:
+          - name: secret
+            mountPath: /secret
+            readOnly: true
+        env:
+          - name: POSTGRES_PASSWORD_FILE
+            value: /secret/password
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_username
+                optional: false
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: zabbix-postgres-secret
+                key: db_name
+                optional: false
+          - name: DB_SERVER_HOST
+            value: "postgresql"
+          - name: ZBX_SERVER_HOST
+            value: "localhost"
+          - name: ZBX_SERVER_NAME
+            value: "Zabbix ARISTO LLc."
+      - name: zabbix-agent2
+        image: zabbix/zabbix-agent2:6.2-alpine-latest
+        ports:
+         - protocol: TCP
+           containerPort: 10050
+        env:
+          - name: ZBX_VALUECACHESIZE
+            value: 768M
+          - name: ZBX_HOSTNAME
+            value: "Zabbix server" 
+          - name: ZBX_SERVER_HOST
+            value: "localhost" 
+          - name: PHP_TZ
+            value: "Europe/Moscow" 
+#          - name: ZBX_TLSPSKFILE
+#            value: zabbix-server.psk 
+#          - name: ZBX_TLSPSKIDENTITY
+#            value: zabbix-server 
+#          - name: ZBX_TLSCONNECT
+#            value: psk 
+#          - name: ZBX_TLSACCEPT=psk
+      - name: zabbix-snmptraps
+        image: zabbix/zabbix-snmptraps:6.2-alpine-latest
+        ports:
+         - protocol: UDP
+           containerPort: 1162
+        volumeMounts:
+         - name: zabbix-data
+           mountPath: /var/lib/zabbix
+      initContainers:
+      - name: volume-dirs-init-cntr
+        image: busybox:1.35
+        volumeMounts:
+          - name: zabbix-data
+            mountPath: /mnt/data
+        command:
+        - "/bin/mkdir"
+        args:
+        - "-p"
+        - "/mnt/data/{modules,enc,ssh_keys,snmptraps,mibs,export}"
+      volumes:
+        - name: secret
+          secret:
+            secretName: zabbix-postgres-secret
+            items:
+              - key: db_password
+                path: password
+        - name: zabbix-data
+          persistentVolumeClaim:
+            claimName: zabbix-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-server
+  namespace: zabbix
+  annotations:
+    haproxy.org/load-balance: "leastconn"
+    haproxy.org/check: "true"
+    haproxy.org/check-interval: "10s"
+  labels:
+    app: zabbix
+spec:
+  ports:
+  - port: 10051
+    name: zabbix-server
+    protocol: TCP
+  - port: 10050
+    name: zabbix-agent
+    protocol: TCP
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 8443
+    targetPort: 8443
+    protocol: TCP
+    name: https
+  - port: 162
+    targetPort: 1162
+    protocol: UDP
+    name: snmp
+  selector:
+    app: zabbix
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: zabbix
+  labels:
+    app: zabbix
+spec:
+  storageClassName: "openebs-wfc-zfspv-retain"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: zabbix
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+         - protocol: TCP
+           containerPort: 3000
+        env:
+         - name: GF_SERVER_ROOT_URL
+           value: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+         - name: GF_SERVER_DOMAIN
+           value: "kube.aristo.ru"
+         - name: GF_SERVER_SERVE_FROM_SUB_PATH
+           value: "true"
+        volumeMounts:
+          - name: grafana-data
+            mountPath: /var/lib/grafana
+ #         - name: config-volume
+ #           mountPath: /etc/grafana/grafana.ini
+ #           readOnly: true
+ #           subPath: grafana.ini
+      initContainers:
+      - name: volume-dirs-init-cntr
+        image: busybox:1.35
+        volumeMounts:
+          - name: grafana-data
+            mountPath: /mnt/data
+        command:
+        - "/bin/chown"
+        args:
+        - "-R"
+        - "472:472"
+        - "/mnt/data"
+      volumes:
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: grafana-data            
+#        - name: config-volume
+#          configMap:
+#            name: grafana-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: zabbix
+  labels:
+    app: grafana
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+  selector:
+    app: grafana
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-zabbix
+  namespace: zabbix
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    ingress.kubernetes.io/ssl-redirect: "false"
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/issue-temporary-certificate: "true"
+spec:
+#  ingressClassName: nginx
+  tls:
+  - hosts:
+    - kube.aristo.ru
+    secretName: kube-prod-tls
+  rules:
+  - host: kube.aristo.ru
+    http:
+      paths:
+      - pathType: Prefix
+        path: /grafana/
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+      - pathType: Prefix
+        path: /prometheus/
+        backend:
+          service:
+            name: prometheus-service
+            port:
+              number: 8080
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: zabbix-server
+            port:
+              number: 8080

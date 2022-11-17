@@ -1,0 +1,3 @@
+NAME           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+demo-service   ClusterIP   10.96.37.196   <none>        8080/TCP   109d
+kubernetes     ClusterIP   10.96.0.1      <none>        443/TCP    109d

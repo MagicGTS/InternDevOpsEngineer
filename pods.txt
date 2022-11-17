@@ -1,0 +1,91 @@
+NAMESPACE              NAME                                              READY   STATUS      RESTARTS        AGE
+calico-apiserver       calico-apiserver-6fc7bbbd4d-gf7v2                 1/1     Running     2               72d
+calico-apiserver       calico-apiserver-6fc7bbbd4d-lqb64                 1/1     Running     6               97d
+calico-system          calico-kube-controllers-657d56796-fvplh           1/1     Running     15              108d
+calico-system          calico-node-56xxb                                 1/1     Running     10              108d
+calico-system          calico-node-6rx7n                                 1/1     Running     4               108d
+calico-system          calico-node-7txlj                                 1/1     Running     4               108d
+calico-system          calico-node-9tgwg                                 1/1     Running     4               108d
+calico-system          calico-node-kgzsp                                 1/1     Running     12              108d
+calico-system          calico-node-mktqd                                 1/1     Running     21 (43d ago)    108d
+calico-system          calico-typha-669b87fbb8-jn88n                     1/1     Running     13 (35d ago)    108d
+calico-system          calico-typha-669b87fbb8-kscz4                     1/1     Running     31 (43d ago)    108d
+calico-system          calico-typha-669b87fbb8-r4nsv                     1/1     Running     17 (161m ago)   108d
+cert-manager           cert-manager-877fd747c-n9hxv                      1/1     Running     2               15d
+cert-manager           cert-manager-cainjector-bbdb88874-f9nqk           1/1     Running     1               15d
+cert-manager           cert-manager-webhook-5774d5d8f7-8zclp             1/1     Running     2               72d
+gitlab                 gitlab-gitaly-0                                   1/1     Running     0               15d
+gitlab                 gitlab-gitlab-exporter-5b8746988d-hfrsk           1/1     Running     1               86d
+gitlab                 gitlab-gitlab-runner-67995cf87b-krxb2             1/1     Running     23              87d
+gitlab                 gitlab-gitlab-shell-759f658f-8tpvb                1/1     Running     2               86d
+gitlab                 gitlab-gitlab-shell-759f658f-rptxg                1/1     Running     1               72d
+gitlab                 gitlab-kas-c8d8b4cd-ccxws                         1/1     Running     1               83d
+gitlab                 gitlab-kas-c8d8b4cd-lhxgf                         1/1     Running     1               11d
+gitlab                 gitlab-migrations-15-dxsww                        0/1     Completed   0               86d
+gitlab                 gitlab-minio-74dfc6b6c7-fhbgf                     1/1     Running     1               86d
+gitlab                 gitlab-minio-create-buckets-15-vklcw              0/1     Completed   0               86d
+gitlab                 gitlab-postgresql-0                               2/2     Running     0               15d
+gitlab                 gitlab-redis-master-0                             2/2     Running     0               15d
+gitlab                 gitlab-registry-784db54548-gr768                  1/1     Running     1               86d
+gitlab                 gitlab-registry-784db54548-qqbld                  1/1     Running     3               87d
+gitlab                 gitlab-runner-c669f5986-fql7p                     1/1     Running     6               72d
+gitlab                 gitlab-shared-secrets-11-n9e-lh42b                0/1     Completed   0               86d
+gitlab                 gitlab-shared-secrets-12-emf-selfsign-gkj22       0/1     Completed   0               86d
+gitlab                 gitlab-sidekiq-all-in-1-v2-8c596899-8jzrd         1/1     Running     1               86d
+gitlab                 gitlab-toolbox-854bffd46-tjxr9                    1/1     Running     3               87d
+gitlab                 gitlab-webservice-default-746f897c47-kk469        2/2     Running     4               72d
+gitlab                 gitlab-webservice-default-746f897c47-pr95n        2/2     Running     2               86d
+haproxy-controller     haproxy-kubernetes-ingress-2c5ch                  1/1     Running     5               101d
+haproxy-controller     haproxy-kubernetes-ingress-l8dfr                  1/1     Running     25 (43d ago)    101d
+haproxy-controller     haproxy-kubernetes-ingress-qwl2t                  1/1     Running     8               101d
+helloworld             hello-5dc8c76bb9-7z9zt                            1/1     Running     2               72d
+kube-system            coredns-6d4b75cb6d-7gnjm                          1/1     Running     1               86d
+kube-system            coredns-6d4b75cb6d-ldrcp                          1/1     Running     2               72d
+kube-system            etcd-kube-master-0.aristo.ru                      1/1     Running     100 (80m ago)   108d
+kube-system            etcd-kube-master-1.aristo.ru                      1/1     Running     9               109d
+kube-system            etcd-kube-master-2.aristo.ru                      1/1     Running     5               108d
+kube-system            kube-apiserver-kube-master-0.aristo.ru            1/1     Running     204 (80m ago)   108d
+kube-system            kube-apiserver-kube-master-1.aristo.ru            1/1     Running     14              108d
+kube-system            kube-apiserver-kube-master-2.aristo.ru            1/1     Running     9 (35d ago)     108d
+kube-system            kube-controller-manager-kube-master-0.aristo.ru   1/1     Running     6               109d
+kube-system            kube-controller-manager-kube-master-1.aristo.ru   1/1     Running     7               109d
+kube-system            kube-controller-manager-kube-master-2.aristo.ru   1/1     Running     5               109d
+kube-system            kube-proxy-99kp7                                  1/1     Running     1               87d
+kube-system            kube-proxy-gvlp2                                  1/1     Running     2               87d
+kube-system            kube-proxy-hznjn                                  1/1     Running     1               87d
+kube-system            kube-proxy-nvfv9                                  1/1     Running     3               87d
+kube-system            kube-proxy-wklt2                                  1/1     Running     1               87d
+kube-system            kube-proxy-xz6jr                                  1/1     Running     2               87d
+kube-system            kube-scheduler-kube-master-0.aristo.ru            1/1     Running     6               109d
+kube-system            kube-scheduler-kube-master-1.aristo.ru            1/1     Running     7               109d
+kube-system            kube-scheduler-kube-master-2.aristo.ru            1/1     Running     5               109d
+kube-system            metrics-server-5c75cf4796-79b67                   1/1     Running     303 (79m ago)   86d
+kube-system            openebs-zfs-controller-0                          5/5     Running     241 (80m ago)   15d
+kube-system            openebs-zfs-node-bsc2x                            2/2     Running     19 (35d ago)    104d
+kube-system            openebs-zfs-node-cs4fm                            2/2     Running     22 (72d ago)    104d
+kube-system            openebs-zfs-node-hn2sr                            2/2     Running     28 (162m ago)   104d
+kubernetes-dashboard   dashboard-metrics-scraper-8c47d4b5d-njscr         1/1     Running     1               86d
+kubernetes-dashboard   kubernetes-dashboard-5676d8b865-zn8wh             1/1     Running     13              108d
+nginx-ingress          nginx-ingress-66v7k                               1/1     Running     5               101d
+nginx-ingress          nginx-ingress-7bkmt                               1/1     Running     7 (72d ago)     101d
+nginx-ingress          nginx-ingress-dm8rt                               1/1     Running     9               101d
+openebs                openebs-localpv-provisioner-dd977fdd5-jptqg       1/1     Running     1               15d
+openebs                openebs-ndm-8zlcn                                 1/1     Running     19 (162m ago)   104d
+openebs                openebs-ndm-cluster-exporter-866c974856-22n7l     1/1     Running     8               104d
+openebs                openebs-ndm-fd55q                                 1/1     Running     12 (35d ago)    104d
+openebs                openebs-ndm-gvghw                                 1/1     Running     13 (72d ago)    104d
+openebs                openebs-ndm-node-exporter-6r4rj                   1/1     Running     5               104d
+openebs                openebs-ndm-node-exporter-dnpj7                   1/1     Running     8               104d
+openebs                openebs-ndm-node-exporter-x2gkp                   1/1     Running     13              104d
+openebs                openebs-ndm-operator-85886744bb-wh5hq             1/1     Running     10              104d
+prod                   database-0                                        1/1     Running     0               15d
+prod                   geekbrains-5b4cc6bbd7-7p4m7                       1/1     Running     1               72d
+prod                   geekbrains-5b4cc6bbd7-d85kf                       1/1     Running     3               83d
+stage                  database-0                                        1/1     Running     0               15d
+stage                  geekbrains-5b4cc6bbd7-c28z6                       1/1     Running     1               72d
+stage                  geekbrains-5b4cc6bbd7-j5zfp                       1/1     Running     4 (161m ago)    83d
+tigera-operator        tigera-operator-6995cc5df5-z2pzq                  1/1     Running     107 (81m ago)   29d
+zabbix                 grafana-8564bc9f4f-65wz5                          1/1     Running     5               91d
+zabbix                 postgresql-685f56488b-xb9w9                       1/1     Running     0               171m
+zabbix                 prometheus-deployment-5cc596fbcb-9ddcs            1/1     Running     0               2d2h
+zabbix                 zabbix-d7b969858-jqbw2                            4/4     Running     4               86d
