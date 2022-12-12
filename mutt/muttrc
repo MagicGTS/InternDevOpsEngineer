@@ -1,0 +1,17 @@
+#source "gpg -dq $HOME/.mutt/accounts.gpg |"
+source ./mutt/accounts
+
+folder-hook 'yandex.ru' 'source ./mutt/yandex'
+
+source './mutt/yandex'
+
+account-hook yandex.ru 'set imap_user=$my_yandex_user imap_pass=$my_yandex_pass'
+
+macro index <f2> '<change-folder>imaps://imap.yandex.ru<enter>'
+
+set alias_file    = ./mutt/aliases
+set sort_alias    = alias
+set reverse_alias = yes
+source $alias_file
+set mailcap_path  = ./mutt/mailcap
+auto_view text/html

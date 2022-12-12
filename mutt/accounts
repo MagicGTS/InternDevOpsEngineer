@@ -1,0 +1,3 @@
+set my_name        = '<display name>' 
+set my_yandex_user = '<email>'  
+set my_yandex_pass = '<app password>'
