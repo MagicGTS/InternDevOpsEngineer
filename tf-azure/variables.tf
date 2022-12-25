@@ -23,3 +23,27 @@ variable "vm" {
     "VMWSRV2016" = {}
   }
 }
+# Windows VM Admin User
+variable "windows_admin_username" {
+  type        = string
+  description = "Windows VM Admin User"
+  default     = "tfadmin"
+}
+
+# Windows VM Admin Password
+variable "windows_admin_password" {
+  type        = string
+  description = "Windows VM Admin Password"
+  default     = "S3cr3ts24"
+}
+# Input variable: Name of Storage Account
+variable "storage_account_name" {
+  description = "The name of the storage account. Must be globally unique, length between 3 and 24 characters and contain numbers and lowercase letters only."
+  default     = "corpstorage01"
+}
+
+# Input variable: Name of Storage container
+variable "container_name" {
+  description = "The name of the Blob Storage container."
+  default     = "backup"
+}

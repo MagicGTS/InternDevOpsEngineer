@@ -8,3 +8,8 @@ Also, task does not provide information about io profile, that lead as to diffic
 
 ## final decision
 I have choose ZRS and cold storage, because it is enough in general while tasks description have not enough clearance about.
+
+## Final word
+
+After apply Terraform configuration we will get VM and network file share, which available to mount inside the VM by the PS script, provided by Azure. But by the fast search I have not find a way, hot to automate attaching this drive inside VM by Terraform. Some topics in Internet suggested to provide custom startup script to achieve automount.
+Also it is impossible to name storage account as CorpStorage01, because name must be unique across the entire Azure service and also name must consist from low case letters and numbers.

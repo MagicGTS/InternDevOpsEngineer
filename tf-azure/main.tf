@@ -54,7 +54,7 @@ resource "azurerm_network_interface" "my_terraform_nic_fe01" {
 
   ip_configuration {
     name                          = "NICfe01-cfg"
-    subnet_id                     = azurerm_subnet.TFSubnet["subnetfe01"].id
+    subnet_id                     = azurerm_subnet.TFSubnet["subnet01"].id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.my_terraform_public_ip.id
   }
@@ -76,16 +76,46 @@ resource "random_id" "random_id" {
 
 }
 
-# Create storage account for boot diagnostics
-resource "azurerm_storage_account" "my_storage_account" {
+# Create a Storage account
+resource "azurerm_storage_account" "terraform_storage_account" {
   for_each                 = var.vm
-  name                     = "diag${random_id.random_id[each.key].hex}"
+  name                     = "cs${random_id.random_id[each.key].hex}"
   location                 = azurerm_resource_group.rg.location
   resource_group_name      = azurerm_resource_group.rg.name
   account_tier             = "Standard"
   account_replication_type = "ZRS"
+  access_tier              = "Cool"
 }
+resource "azurerm_storage_container" "terraform_storage_container" {
+  for_each              = var.vm
+  name                  = "${var.container_name}${random_id.random_id[each.key].hex}"
+  storage_account_name  = azurerm_storage_account.terraform_storage_account[each.key].name
+  container_access_type = "private"
+}
+resource "azurerm_storage_blob" "terraform_blob_storage" {
+  for_each               = var.vm
+  name                   = "${var.container_name}${random_id.random_id[each.key].hex}"
+  storage_account_name   = azurerm_storage_account.terraform_storage_account[each.key].name
+  storage_container_name = azurerm_storage_container.terraform_storage_container[each.key].name
+  type                   = "Block"
+}
+resource "azurerm_storage_share" "terraform_blob_share" {
+  for_each             = var.vm
+  name                 = "${var.container_name}${random_id.random_id[each.key].hex}"
+  storage_account_name = azurerm_storage_account.terraform_storage_account[each.key].name
 
+  acl {
+    id = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI"
+
+    access_policy {
+      permissions = "rwdl"
+      start       = "2022-12-24T09:38:21.0000000Z"
+      expiry      = "2023-12-24T10:38:21.0000000Z"
+    }
+  }
+  enabled_protocol = "SMB"
+  quota            = 10
+}
 locals {
   nics = {
     "VMWSRV2016" = [azurerm_network_interface.my_terraform_nic_fe01.id]
@@ -93,13 +123,13 @@ locals {
 }
 # Create Windows Server
 resource "azurerm_windows_virtual_machine" "windows-vm" {
-  for_each            = var.vm
+  for_each              = var.vm
   name                  = "windows-vm"
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
-  size                  = var.windows_vm_size
-  network_interface_ids = [azurerm_network_interface.windows-vm-nic.id]
-  
+  size                  = "Standard_B1s"
+  network_interface_ids = local.nics["VMWSRV2016"]
+
   computer_name  = "windows-vm"
   admin_username = var.windows_admin_username
   admin_password = var.windows_admin_password
@@ -111,45 +141,9 @@ resource "azurerm_windows_virtual_machine" "windows-vm" {
   source_image_reference {
     publisher = "MicrosoftWindowsServer"
     offer     = "WindowsServer"
-    sku       = var.windows_2022_sku
+    sku       = "2016-Datacenter"
     version   = "latest"
   }
   enable_automatic_updates = true
   provision_vm_agent       = true
-}
-# Create virtual machine
-resource "azurerm_windows_virtual_machine" "my_terraform_vm" {
-  for_each            = var.vm
-  name                = each.key
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  #network_interface_ids = each.value.nics
-  network_interface_ids = local.nics[each.key]
-  size                  = "Standard_B1s"
-
-  os_disk {
-    name                 = "myOsDisk${random_id.random_id[each.key].hex}"
-    caching              = "ReadWrite"
-    storage_account_type = "StandardSSD_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
-
-  computer_name                   = each.key
-  admin_username                  = "azureuser"
-  disable_password_authentication = true
-
-  admin_ssh_key {
-    username   = "azureuser"
-    public_key = tls_private_key.example_ssh.public_key_openssh
-  }
-
-  boot_diagnostics {
-    storage_account_uri = azurerm_storage_account.my_storage_account[each.key].primary_blob_endpoint
-  }
 }
