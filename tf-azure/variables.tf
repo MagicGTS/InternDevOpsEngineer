@@ -7,6 +7,10 @@ variable "resource_group_name_prefix" {
   default     = "rg"
   description = "Prefix of the resource group name that's combined with a random ID so name is unique in your Azure subscription."
 }
+variable "service_plan_name_prefix" {
+  default     = "sp"
+  description = "Prefix of the App Service Plan name that's combined with a random ID so name is unique in your Azure subscription."
+}
 variable "vnet" {
   type        = map(any)
   description = "creating rg and vnet"
@@ -22,18 +26,17 @@ variable "vm" {
   type        = map(any)
   description = "creating vm"
   default = {
-    "VMLUE01" = {},
     "VMLU01"  = {},
     "VMLU02"  = {},
   }
 }
 
 variable "frontend_port_name" {
-    default = "myFrontendPort"
+  default = "myFrontendPort"
 }
 
 variable "frontend_ip_configuration_name" {
-    default = "myAGIPConfig"
+  default = "myAGIPConfig"
 }
 
 variable "http_setting_name" {
