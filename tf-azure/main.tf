@@ -15,11 +15,12 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.rg.name
 }
 resource "azurerm_subnet" "TFSubnet" {
-  for_each             = var.vnet
-  name                 = each.key
-  address_prefixes     = [each.value.subnet_address]
-  virtual_network_name = "TFVnet"
-  resource_group_name  = azurerm_resource_group.rg.name
+  for_each                                  = var.vnet
+  name                                      = each.key
+  address_prefixes                          = [each.value.subnet_address]
+  virtual_network_name                      = "TFVnet"
+  resource_group_name                       = azurerm_resource_group.rg.name
+  private_endpoint_network_policies_enabled = true
 }
 # Create public IPs
 resource "azurerm_public_ip" "my_terraform_public_ip" {
@@ -30,24 +31,6 @@ resource "azurerm_public_ip" "my_terraform_public_ip" {
   sku                 = "Standard"
 }
 
-# Create Network Security Group and rule
-resource "azurerm_network_security_group" "my_terraform_nsg" {
-  name                = "myNetworkSecurityGroup"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-
-  security_rule {
-    name                       = "SSH"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-}
 resource "azurerm_application_gateway" "network" {
   name                = "myAppGateway"
   location            = azurerm_resource_group.rg.location
@@ -75,15 +58,17 @@ resource "azurerm_application_gateway" "network" {
   }
 
   backend_address_pool {
-    name = var.backend_address_pool_name
+    name = azurerm_subnet.TFSubnet["backend"].name
   }
 
   backend_http_settings {
-    name                  = var.http_setting_name
-    cookie_based_affinity = "Disabled"
-    port                  = 80
-    protocol              = "Http"
-    request_timeout       = 60
+    name                                = var.http_setting_name
+    cookie_based_affinity               = "Disabled"
+    port                                = 80
+    protocol                            = "Http"
+    request_timeout                     = 60
+    probe_name                          = "probe"
+    pick_host_name_from_backend_address = true
   }
 
   http_listener {
@@ -92,81 +77,79 @@ resource "azurerm_application_gateway" "network" {
     frontend_port_name             = var.frontend_port_name
     protocol                       = "Http"
   }
-
+  probe {
+    name     = "probe"
+    protocol = "Http"
+    path     = "/"
+    host     = "127.0.0.1"
+    # host = "${azurerm_linux_web_app.webapp.name}.azurewebsites.net"
+    interval            = "30"
+    timeout             = "30"
+    unhealthy_threshold = "3"
+  }
   request_routing_rule {
     name                       = var.request_routing_rule_name
     rule_type                  = "Basic"
     http_listener_name         = var.listener_name
-    backend_address_pool_name  = var.backend_address_pool_name
+    backend_address_pool_name  = azurerm_subnet.TFSubnet["backend"].name
     backend_http_settings_name = var.http_setting_name
     priority                   = 100
   }
-} 
-resource "azurerm_network_interface" "nic" {
-  count = 2
-  name                = "nic-${count.index+1}"
+}
+
+# Create the Linux App Service Plan
+resource "azurerm_service_plan" "appserviceplan" {
+  name                = "webapp-asp-${random_pet.sp_name.id}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-
-  ip_configuration {
-    name                          = "nic-ipconfig-${count.index+1}"
-    subnet_id                     = azurerm_subnet.TFSubnet["backend"].id
-    private_ip_address_allocation = "Dynamic"
-  }
+  os_type             = "Linux"
+  sku_name            = "S1"
 }
 
-resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "nic-assoc01" {
-  count = 2
-  network_interface_id    = azurerm_network_interface.nic[count.index].id
-  ip_configuration_name   = "nic-ipconfig-${count.index+1}"
-  backend_address_pool_id = tolist(azurerm_application_gateway.network.backend_address_pool).0.id
-}
-resource "random_password" "password" {
-  length = 16
-  special = true
-  lower = true
-  upper = true
-  numeric = true
-}
-resource "azurerm_windows_virtual_machine" "vm" {
-  count = 2
-  name                = "myVM${count.index+1}"
-  resource_group_name = azurerm_resource_group.rg.name
+# Create the web app, pass in the App Service Plan ID
+resource "azurerm_linux_web_app" "webapp" {
+  name                = "webapp-${random_pet.sp_name.id}"
   location            = azurerm_resource_group.rg.location
-  size                = "Standard_DS1_v2"
-  admin_username      = "azureadmin"
-  admin_password      = random_password.password.result
-
-  network_interface_ids = [
-    azurerm_network_interface.nic[count.index].id,
-  ]
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+  resource_group_name = azurerm_resource_group.rg.name
+  service_plan_id     = azurerm_service_plan.appserviceplan.id
+  https_only          = true
+  site_config {
+    minimum_tls_version = "1.2"
   }
+}
+resource "azurerm_private_endpoint" "example" {
+  name                = "${azurerm_linux_web_app.webapp.name}-endpoint"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  subnet_id           = azurerm_subnet.TFSubnet["backend"].id
 
 
-  source_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServer"
-    sku       = "2019-Datacenter"
-    version   = "latest"
+  private_service_connection {
+    name                           = "${azurerm_linux_web_app.webapp.name}-privateconnection"
+    private_connection_resource_id = azurerm_linux_web_app.webapp.id
+    subresource_names              = ["sites"]
+    is_manual_connection           = false
   }
 }
 
-resource "azurerm_virtual_machine_extension" "vm-extensions" {
-  count = 2
-  name                 = "vm${count.index+1}-ext"
-  virtual_machine_id   = azurerm_windows_virtual_machine.vm[count.index].id
-  publisher            = "Microsoft.Compute"
-  type                 = "CustomScriptExtension"
-  type_handler_version = "1.10"
+# private DNS
+resource "azurerm_private_dns_zone" "example" {
+  name                = "privatelink.azurewebsites.net"
+  resource_group_name = azurerm_resource_group.rg.name
+}
 
-  settings = <<SETTINGS
-    {
-        "commandToExecute": "powershell Add-WindowsFeature Web-Server; powershell Add-Content -Path \"C:\\inetpub\\wwwroot\\Default.htm\" -Value $($env:computername)"
-    }
-SETTINGS
-
+#private DNS Link
+resource "azurerm_private_dns_zone_virtual_network_link" "example" {
+  name                  = "${azurerm_linux_web_app.webapp.name}-dnslink"
+  resource_group_name   = azurerm_resource_group.rg.name
+  private_dns_zone_name = azurerm_private_dns_zone.example.name
+  virtual_network_id    = azurerm_virtual_network.vnet.id
+  registration_enabled  = false
+}
+resource "azurerm_app_service_source_control" "sourcecontrol" {
+  app_id                 = azurerm_linux_web_app.webapp.id
+  repo_url               = "https://github.com/Azure-Samples/nodejs-docs-hello-world"
+  branch                 = "master"
+  use_manual_integration = true
+  use_mercurial          = false
 }
