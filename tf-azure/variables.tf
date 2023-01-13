@@ -22,14 +22,6 @@ variable "vnet" {
     subnet_address = "10.0.1.0/24" }
   }
 }
-variable "vm" {
-  type        = map(any)
-  description = "creating vm"
-  default = {
-    "VMLU01"  = {},
-    "VMLU02"  = {},
-  }
-}
 
 variable "frontend_port_name" {
   default = "myFrontendPort"
@@ -53,4 +45,7 @@ variable "request_routing_rule_name" {
 
 variable "redirect_configuration_name" {
   default = "myRedirectConfig"
+}
+variable "backend_address_pool_name" {
+    default = "myBackendPool"
 }

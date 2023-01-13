@@ -75,7 +75,7 @@ resource "azurerm_application_gateway" "network" {
   }
 
   backend_address_pool {
-    name = azurerm_subnet.TFSubnet["backend"].name
+    name = var.backend_address_pool_name
   }
 
   backend_http_settings {
@@ -97,29 +97,76 @@ resource "azurerm_application_gateway" "network" {
     name                       = var.request_routing_rule_name
     rule_type                  = "Basic"
     http_listener_name         = var.listener_name
-    backend_address_pool_name  = azurerm_subnet.TFSubnet["backend"].name
+    backend_address_pool_name  = var.backend_address_pool_name
     backend_http_settings_name = var.http_setting_name
     priority                   = 100
   }
 } 
-
-# Create the Linux App Service Plan
-resource "azurerm_service_plan" "appserviceplan" {
-  name                = "webapp-asp-${random_pet.sp_name.id}"
+resource "azurerm_network_interface" "nic" {
+  count = 2
+  name                = "nic-${count.index+1}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  os_type             = "Linux"
-  sku_name            = "B1"
+
+  ip_configuration {
+    name                          = "nic-ipconfig-${count.index+1}"
+    subnet_id                     = azurerm_subnet.TFSubnet["backend"].id
+    private_ip_address_allocation = "Dynamic"
+  }
 }
 
-# Create the web app, pass in the App Service Plan ID
-resource "azurerm_linux_web_app" "webapp" {
-  name                  = "webapp-${random_pet.sp_name.id}"
-  location              = azurerm_resource_group.rg.location
-  resource_group_name   = azurerm_resource_group.rg.name
-  service_plan_id       = azurerm_service_plan.appserviceplan.id
-  https_only            = true
-  site_config { 
-    minimum_tls_version = "1.2"
+resource "azurerm_network_interface_application_gateway_backend_address_pool_association" "nic-assoc01" {
+  count = 2
+  network_interface_id    = azurerm_network_interface.nic[count.index].id
+  ip_configuration_name   = "nic-ipconfig-${count.index+1}"
+  backend_address_pool_id = tolist(azurerm_application_gateway.network.backend_address_pool).0.id
+}
+resource "random_password" "password" {
+  length = 16
+  special = true
+  lower = true
+  upper = true
+  numeric = true
+}
+resource "azurerm_windows_virtual_machine" "vm" {
+  count = 2
+  name                = "myVM${count.index+1}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_DS1_v2"
+  admin_username      = "azureadmin"
+  admin_password      = random_password.password.result
+
+  network_interface_ids = [
+    azurerm_network_interface.nic[count.index].id,
+  ]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
   }
+
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+}
+
+resource "azurerm_virtual_machine_extension" "vm-extensions" {
+  count = 2
+  name                 = "vm${count.index+1}-ext"
+  virtual_machine_id   = azurerm_windows_virtual_machine.vm[count.index].id
+  publisher            = "Microsoft.Compute"
+  type                 = "CustomScriptExtension"
+  type_handler_version = "1.10"
+
+  settings = <<SETTINGS
+    {
+        "commandToExecute": "powershell Add-WindowsFeature Web-Server; powershell Add-Content -Path \"C:\\inetpub\\wwwroot\\Default.htm\" -Value $($env:computername)"
+    }
+SETTINGS
+
 }
