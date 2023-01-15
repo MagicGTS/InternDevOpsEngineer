@@ -81,8 +81,8 @@ resource "azurerm_application_gateway" "network" {
     name     = "probe"
     protocol = "Http"
     path     = "/"
-    host     = "127.0.0.1"
-    # host = "${azurerm_linux_web_app.webapp.name}.azurewebsites.net"
+    #host     = "127.0.0.1"
+    host = "${azurerm_linux_web_app.webapp.name}.azurewebsites.net"
     interval            = "30"
     timeout             = "30"
     unhealthy_threshold = "3"
@@ -115,6 +115,9 @@ resource "azurerm_linux_web_app" "webapp" {
   https_only          = true
   site_config {
     minimum_tls_version = "1.2"
+    application_stack {
+      node_version = "16-lts"
+    }
   }
 }
 resource "azurerm_private_endpoint" "example" {
@@ -149,7 +152,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "example" {
 resource "azurerm_app_service_source_control" "sourcecontrol" {
   app_id                 = azurerm_linux_web_app.webapp.id
   repo_url               = "https://github.com/Azure-Samples/nodejs-docs-hello-world"
-  branch                 = "master"
+  branch                 = "main"
   use_manual_integration = true
   use_mercurial          = false
 }
