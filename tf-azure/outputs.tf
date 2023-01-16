@@ -21,3 +21,7 @@ output "tls_private_key" {
   sensitive = true
 }
  */
+
+output "secret_identifier" {
+  value = azurerm_key_vault_certificate.example.secret_id
+}

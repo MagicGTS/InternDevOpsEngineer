@@ -16,18 +16,15 @@ variable "vnet" {
   description = "creating rg and vnet"
   default = {
     "frontend" = {
-      subnet_address = "10.0.0.0/24"
+      subnet_address                = "10.0.0.0/24"
+      private_endpoint              = true
+      enforce_private_link_policies = true
     },
     "backend" = {
-    subnet_address = "10.0.1.0/24" }
-  }
-}
-variable "vm" {
-  type        = map(any)
-  description = "creating vm"
-  default = {
-    "VMLU01" = {},
-    "VMLU02" = {},
+      subnet_address                = "10.0.1.0/24"
+      private_endpoint              = true
+      enforce_private_link_policies = false
+    }
   }
 }
 
@@ -53,4 +50,7 @@ variable "request_routing_rule_name" {
 
 variable "redirect_configuration_name" {
   default = "myRedirectConfig"
+}
+variable "private_link_configuration_name" {
+  default = "PrivateLinkConfig"
 }
