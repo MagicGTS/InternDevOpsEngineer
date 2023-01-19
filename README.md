@@ -123,6 +123,7 @@ KUBELET_EXTRA_ARGS="--container-log-max-size=100M"
 EOF
 ```
 - sudo -- bash -c "sed -i 's/\#?*\s*conmon_cgroup\s*=.*/conmon_cgroup = \"kubepods.slice\"/g' /etc/crio/crio.conf"
+- sudo -- bash -c "sed -i 's/\#?*\s*PMLOGGER_DAILY_PARAMS\s*=.*/PMLOGGER_DAILY_PARAMS = \"-E -k 1\"/g' /etc/sysconfig/pmlogger_timers"
 - sudo systemctl disable --now rsyslog
 - sudo logrotate --force /etc/logrotate.conf
 - sudo find /var/log/ -type f -regextype sed -regex '.*[0-9]\{8,8\}.*' -exec rm -f {} +
