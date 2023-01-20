@@ -42,7 +42,7 @@ EOF
 
 ## Downloading k8s packages
 - export OS=CentOS_8_Stream
-- export VERSION=1.24
+- export VERSION=1.26
 - sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
 - sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo
 
@@ -109,7 +109,7 @@ etcd:
     dataDir: /var/lib/etcd
 imageRepository: k8s.gcr.io
 kind: ClusterConfiguration
-kubernetesVersion: v1.24.3
+kubernetesVersion: v1.26.1
 networking:
   dnsDomain: <dns cluster name>
   podSubnet: 10.85.0.0/16
@@ -166,7 +166,7 @@ etc
 ## Installing calico
 
 - kubectl apply -f https://docs.projectcalico.org/v3.15/manifests/calico.yaml
-- kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.6.0/aio/deploy/recommended.yaml
+- kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
 
 # Creating dashboard service account and role
 
