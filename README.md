@@ -102,7 +102,8 @@ certificatesDir: /etc/kubernetes/pki
 clusterName: kubernetes
 controlPlaneEndpoint: <some ip\dns name>:6443
 controllerManager: {}
-dns: {}
+dns:
+  imageRepository: k8s.gcr.io/coredns
 etcd:
   local:
     dataDir: /var/lib/etcd
