@@ -103,7 +103,7 @@ clusterName: kubernetes
 controlPlaneEndpoint: <some ip\dns name>:6443
 controllerManager: {}
 dns:
-  imageRepository: k8s.gcr.io/coredns
+  imageRepository: registry.k8s.io/coredns/coredns
 etcd:
   local:
     dataDir: /var/lib/etcd
