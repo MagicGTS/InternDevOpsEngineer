@@ -201,6 +201,7 @@ EOF
 - kubectl create -f custom-resources.yaml
 - kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
 - kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+- --kubelet-insecure-tls
 # Creating dashboard service account and role
 
 ```
@@ -230,7 +231,7 @@ EOF
 To access dashboard we should use token and start proxy:
 - kubectl -n kubernetes-dashboard create token admin-user
 - kubectl proxy
-http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+[http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/]
 
 To add additional node to cluster we should use command like it:
 ```
