@@ -41,7 +41,7 @@ EOF
 
 ## Downloading k8s packages
 - export OS=CentOS_8_Stream
-- export VERSION=1.26
+- export VERSION=1.27
 - sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
 - sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo
 
@@ -113,7 +113,7 @@ kubernetesVersion: v1.26.1
 networking:
   dnsDomain: <dns cluster name>
   podSubnet: 10.85.0.0/16
-  serviceSubnet: 10.96.0.0/12
+  serviceSubnet: 10.96.0.0/16
 scheduler: {}
 EOF
 ```
@@ -165,9 +165,42 @@ etc
 ```
 ## Installing calico
 
-- kubectl apply -f https://docs.projectcalico.org/v3.15/manifests/calico.yaml
-- kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+- kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/tigera-operator.yaml
+- curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/custom-resources.yaml -O
+```
+cat <<EOF | sudo tee /etc/sysconfig/kubelet
+# This section includes base Calico installation configuration.
+# For more information, see: https://projectcalico.docs.tigera.io/master/reference/installation/api#operator.tigera.io/v1.Installation
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  # Configures Calico networking.
+  calicoNetwork:
+    # Note: The ipPools section cannot be modified post-install.
+    mtu: 1376
+    ipPools:
+    - blockSize: 26
+      cidr: 10.85.0.0/16
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
 
+---
+
+# This section configures the Calico API server.
+# For more information, see: https://projectcalico.docs.tigera.io/master/reference/installation/api#operator.tigera.io/v1.APIServer
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+EOF
+```
+- kubectl create -f custom-resources.yaml
+- kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+- kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 # Creating dashboard service account and role
 
 ```
