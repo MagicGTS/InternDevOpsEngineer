@@ -274,7 +274,8 @@ Inside StorageClass folder you can find some StorageClass definition and persist
 
 ## Install Cert-Manager
 To have global validity ssl certificate we can by it from appropriate pki provider or use Let's Encrypt with Cert-Manager. Because it is not quite easy to do it by k8s manifest, just do it by helm:
-- helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.9.1 --set installCRDs=true
+- helm repo add jetstack https://charts.jetstack.io
+- helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.12.0 --set installCRDs=true
 ## Zabbix inside kubernetes
 
 We can deploy zabbix by single simple action, but it isn't simple inside:
