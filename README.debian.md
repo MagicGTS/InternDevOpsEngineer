@@ -34,27 +34,28 @@ EOF
 ```
 - Disabling swap (mandatory), selinux (current k8s has numerius problem with it) and cgroup v1 (also has problem)
 - sudo -- bash -c "swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab"
-- sudo sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
-- sudo grubby --update-kernel ALL --args enforcing=0
 - sudo grubby --update-kernel ALL --args systemd.unified_cgroup_hierarchy=0
 - reboot
 
 ## Downloading k8s packages
-- export OS=CentOS_8_Stream
-- export VERSION=1.26
-- sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
-- sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:1.24.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.24/CentOS_8_Stream/devel:kubic:libcontainers:stable:cri-o:1.24.repo
+- KUBERNETES_VERSION=v1.29
+- PROJECT_PATH=stable:/v1.29
+- sudo apt-get update && sudo apt-get install -y software-properties-common curl
 
 ```
-cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-exclude=kubelet kubeadm kubectl
-EOF
+curl -fsSL https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
+```
+```
+curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/$PROJECT_PATH/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/$PROJECT_PATH/deb/ /" | tee /etc/apt/sources.list.d/cri-o.list
+```
+```
+apt-get update
+apt-get install -y cri-o kubelet kubeadm kubectl
+systemctl start crio.service
 ```
 - Preparation to use calico
 ```
